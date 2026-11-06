@@ -1,0 +1,6 @@
+const fs=await import('node:fs/promises');const t=await taskSpace(3),p=t.page('p1');
+const all=JSON.parse(await fs.readFile('F:/Paper/PaperLine.JSON','utf8'));const done=new Set(JSON.parse(await fs.readFile('F:/Paper/ieee-download-status.json','utf8')).map(x=>x.id));
+const ids=[...new Set(all.map(x=>x.match(/arnumber=(\d+)/)?.[1]).filter(Boolean))].filter(x=>!done.has(x)).slice(0,5);
+const start=Date.now();console.log('start',ids);
+const results=await Promise.all(ids.map(async id=>{const path='F:/Paper/PDF/IEEE_'+id+'.pdf';const s=Date.now();try{const r=await p.fetch('https://ieeexplore.ieee.org/stampPDF/getPDF.jsp?tp=&arnumber='+id+'&ref=',{saveAs:path,timeout:180000});const b=await fs.readFile(path);if(b.subarray(0,5).toString()!=='%PDF-'){await fs.unlink(path);throw Error('Non-PDF HTTP '+r.status);}return{id,path,status:'downloaded',bytes:b.length,seconds:(Date.now()-s)/1000};}catch(e){return{id,status:'failed',error:String(e)};}}));
+const rows=JSON.parse(await fs.readFile('F:/Paper/ieee-download-status.json','utf8'));const map=new Map(rows.map(x=>[x.id,x]));for(const r of results)map.set(r.id,r);await fs.writeFile('F:/Paper/ieee-download-status.json',JSON.stringify([...map.values()],null,2));console.log({elapsed:(Date.now()-start)/1000,results});
